@@ -84,8 +84,10 @@ def get_character_data():
     )
     result = response.json()
     character_data = result.get("data", {}).get("characterData", {}).get("character")
+    noData = False
 
     if not character_data:
+        noData = True
         character_data = {
             "classID": 1,
             "healerRankings": {
@@ -114,7 +116,9 @@ def get_character_data():
         }
     )
 
-    r.set(key, json.dumps(finishedObject.get_json()))
-    r.expire(key, 3600)
+    if not noData:
+        app.logger.info("No data inserted into Redis")
+        r.set(key, json.dumps(finishedObject.get_json()))
+        r.expire(key, 3600)
 
     return finishedObject
