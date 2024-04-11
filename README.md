@@ -1,0 +1,1 @@
+https://warcraftgrouplogs.onrender.com/
