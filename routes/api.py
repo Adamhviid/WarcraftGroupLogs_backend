@@ -5,35 +5,35 @@ import requests
 import json
 import os
 
-from auth import sod_access_token
+from auth import get_access_token
 
-sod = Blueprint("sod", __name__)
+api = Blueprint("api", __name__)
 
 r = redis.from_url(os.getenv("REDIS_URL"))
 
-
-@sod.route("/clear_redis", methods=["POST"])
+""" @sod.route("/clear_redis", methods=["POST"])
 def clear_redis():
     r.flushall()
-    return "OK"
+    return "OK" """
 
 
-@sod.route("/get_redis", methods=["GET"])
+@api.route("/get_redis", methods=["GET"])
 def get_redis_keys():
     keys = r.keys()
     keys = [key.decode("utf-8") for key in keys]  # type: ignore
     return jsonify(json.dumps(keys))
 
 
-@sod.route("/get_character_data", methods=["POST"])
+@api.route("/get_character_data", methods=["POST"])
 def get_character_data():
     data = request.get_json()
     name = data.get("name")
+    version = data.get("version")
     server = data.get("server")
     region = data.get("region")
     zone = data.get("zone")
 
-    key = f"sod:{name}:{server}:{region}:{zone}"
+    key = f"{version}:{name}:{server}:{region}:{zone}"
 
     try:
         character_data = r.get(key)
@@ -56,13 +56,21 @@ def get_character_data():
         }}
     }}
     """
+
+    formatted_url = (
+        "https://www.warcraftlogs.com"
+        if version == "retail"
+        else f"https://{version}.warcraftlogs.com"
+    )
+
     response = requests.post(
-        "https://sod.warcraftlogs.com/api/v2/client",
+        formatted_url + "/api/v2/client",
         headers={
-            "Authorization": f"Bearer {sod_access_token()}",
+            "Authorization": f"Bearer {get_access_token(formatted_url)}",
         },
         json={"query": query},
     )
+
     result = response.json()
     character_data = result.get("data", {}).get("characterData", {}).get("character")
     noData = False
