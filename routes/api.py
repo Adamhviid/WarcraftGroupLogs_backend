@@ -107,6 +107,6 @@ def get_character_data():
 
     if not check_if_no_data:
         r.set(key, json.dumps(finishedObject.get_json()))
-        r.expire(key, 3600)
+        r.expire(key, 86400)
 
     return finishedObject
