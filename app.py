@@ -14,7 +14,7 @@ app.logger.setLevel(logging.INFO)
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True, port=5001)
 
 
 @app.route("/")

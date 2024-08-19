@@ -11,16 +11,16 @@ api = Blueprint("api", __name__)
 
 r = redis.from_url(os.getenv("REDIS_URL"))
 
-""" @sod.route("/clear_redis", methods=["POST"])
+@api.route("/clear_redis", methods=["GET"])
 def clear_redis():
     r.flushall()
-    return "OK" """
+    return "OK"
 
 
 @api.route("/get_redis", methods=["GET"])
 def get_redis_keys():
     keys = r.keys()
-    keys = [key.decode("utf-8") for key in keys]  # type: ignore
+    keys = [key.decode("utf-8") for key in keys]  
     return jsonify(json.dumps(keys))
 
 
@@ -32,8 +32,9 @@ def get_character_data():
     server = data.get("server")
     region = data.get("region")
     zone = data.get("zone")
+    difficulty = data.get("difficulty")
 
-    key = f"{version}:{name}:{server}:{region}:{zone}"
+    key = f"{version}:{region}:{server}:{zone}:{difficulty}:{name}".encode("utf-8")
 
     try:
         character_data = r.get(key)
@@ -41,7 +42,7 @@ def get_character_data():
         character_data = None
 
     if character_data is not None:
-        character_data = character_data.decode("utf-8")  # type: ignore
+        character_data = character_data.decode("utf-8")
         return jsonify(json.loads(character_data))
 
     query = f"""
@@ -49,9 +50,9 @@ def get_character_data():
         characterData {{
             character(name: "{name}", serverSlug: "{server}", serverRegion: "{region}") {{
                 classID
-                healerRankings: zoneRankings(zoneID: {zone}, role: Healer, metric: hps)
-                tankRankings: zoneRankings(zoneID: {zone}, role: Tank, metric: dps)
-                dpsRankings: zoneRankings(zoneID: {zone}, role: DPS, metric: dps)
+                healerRankings: zoneRankings(zoneID: {zone}, difficulty: {difficulty}, role: Healer, metric: hps)
+                tankRankings: zoneRankings(zoneID: {zone}, difficulty: {difficulty}, role: Tank, metric: dps)
+                dpsRankings: zoneRankings(zoneID: {zone}, difficulty: {difficulty}, role: DPS, metric: dps)
             }}
         }}
     }}
@@ -62,6 +63,9 @@ def get_character_data():
         if version == "retail"
         else f"https://{version}.warcraftlogs.com"
     )
+    
+    print(formatted_url)
+    
 
     response = requests.post(
         formatted_url + "/api/v2/client",
@@ -78,7 +82,7 @@ def get_character_data():
     if not character_data:
         check_if_no_data = True
         character_data = {
-            "classID": 1,
+            "classID": 0,
             "healerRankings": {
                 "bestPerformanceAverage": None,
                 "medianPerformanceAverage": None,
@@ -106,7 +110,7 @@ def get_character_data():
     )
 
     if not check_if_no_data:
-        r.set(key, json.dumps(finishedObject.get_json()))
+        r.set(key, json.dumps(finishedObject.get_json()).encode("utf-8"))
         r.expire(key, 86400)
 
     return finishedObject
