@@ -64,9 +64,6 @@ def get_character_data():
         else f"https://{version}.warcraftlogs.com"
     )
     
-    print(formatted_url)
-    
-
     response = requests.post(
         formatted_url + "/api/v2/client",
         headers={
