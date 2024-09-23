@@ -74,10 +74,8 @@ def get_character_data():
 
     result = response.json()
     character_data = result.get("data", {}).get("characterData", {}).get("character")
-    check_if_no_data = False
 
     if not character_data:
-        check_if_no_data = True
         character_data = {
             "classID": 0,
             "healerRankings": {
@@ -106,8 +104,7 @@ def get_character_data():
         }
     )
 
-    if not check_if_no_data:
-        r.set(key, json.dumps(finishedObject.get_json()).encode("utf-8"))
-        r.expire(key, 86400)
+    r.set(key, json.dumps(finishedObject.get_json()).encode("utf-8"))
+    r.expire(key, 86400) #24 hours
 
     return finishedObject
