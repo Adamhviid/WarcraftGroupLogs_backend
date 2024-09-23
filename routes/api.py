@@ -45,14 +45,20 @@ def get_character_data():
         character_data = character_data.decode("utf-8")
         return jsonify(json.loads(character_data))
 
+    metric = "playerscore" if zone == 39 else ""
+
+    default_metrics = {"Healer": "hps", "Tank": "dps", "DPS": "dps"}
+
+    metrics = {role: metric if metric else default_metrics[role] for role in default_metrics}
+
     query = f"""
     query {{
         characterData {{
             character(name: "{name}", serverSlug: "{server}", serverRegion: "{region}") {{
                 classID
-                healerRankings: zoneRankings(zoneID: {zone}, difficulty: {difficulty}, role: Healer, metric: hps)
-                tankRankings: zoneRankings(zoneID: {zone}, difficulty: {difficulty}, role: Tank, metric: dps)
-                dpsRankings: zoneRankings(zoneID: {zone}, difficulty: {difficulty}, role: DPS, metric: dps)
+                healerRankings: zoneRankings(zoneID: {zone}, difficulty: {difficulty}, role: Healer, metric: {metrics['Healer']})
+                tankRankings: zoneRankings(zoneID: {zone}, difficulty: {difficulty}, role: Tank, metric: {metrics['Tank']})
+                dpsRankings: zoneRankings(zoneID: {zone}, difficulty: {difficulty}, role: DPS, metric: {metrics['DPS']})
             }}
         }}
     }}
