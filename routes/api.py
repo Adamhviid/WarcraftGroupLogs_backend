@@ -4,12 +4,24 @@ import redis
 import requests
 import json
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from auth import get_access_token
 
 api = Blueprint("api", __name__)
 
-r = redis.from_url(os.getenv("REDIS_URL"))
+r = redis.from_url(
+    os.getenv("REDIS_URL"),
+    decode_responses=True
+)
+
+try:
+    r.ping()
+    print({"status": "Connected to Redis"})
+except Exception as e:
+    print({"status": "Failed to connect to Redis", "error": str(e)})
 
 @api.route("/clear_redis", methods=["GET"])
 def clear_redis():
@@ -20,8 +32,7 @@ def clear_redis():
 @api.route("/get_redis", methods=["GET"])
 def get_redis_keys():
     keys = r.keys()
-    keys = [key.decode("utf-8") for key in keys]  
-    return jsonify(json.dumps(keys))
+    return jsonify(keys)
 
 
 @api.route("/get_character_data", methods=["POST"])
@@ -34,7 +45,7 @@ def get_character_data():
     zone = data.get("zone")
     difficulty = data.get("difficulty")
 
-    key = f"{version}:{region}:{server}:{zone}:{difficulty}:{name}".encode("utf-8")
+    key = f"{version}:{region}:{server}:{zone}:{difficulty}:{name}"
 
     try:
         character_data = r.get(key)
@@ -42,14 +53,14 @@ def get_character_data():
         character_data = None
 
     if character_data is not None:
-        character_data = character_data.decode("utf-8")
-        return jsonify(json.loads(character_data))
+        return jsonify(json.loads(character_data)) # type: ignore
 
     metric = "playerscore" if zone == 39 else ""
 
     default_metrics = {"Healer": "hps", "Tank": "dps", "DPS": "dps"}
 
-    metrics = {role: metric if metric else default_metrics[role] for role in default_metrics}
+    metrics = {
+        role: metric if metric else default_metrics[role] for role in default_metrics}
 
     query = f"""
     query {{
@@ -69,7 +80,7 @@ def get_character_data():
         if version == "retail"
         else f"https://{version}.warcraftlogs.com"
     )
-    
+
     response = requests.post(
         formatted_url + "/api/v2/client",
         headers={
@@ -79,7 +90,8 @@ def get_character_data():
     )
 
     result = response.json()
-    character_data = result.get("data", {}).get("characterData", {}).get("character")
+    character_data = result.get("data", {}).get(
+        "characterData", {}).get("character")
 
     if not character_data:
         character_data = {
@@ -101,16 +113,14 @@ def get_character_data():
             },
         }
 
-    finishedObject = jsonify(
-        {
-            "name": name,
-            str(zone): {
-                "result": character_data,
-            },
-        }
-    )
+    payload = {
+        "name": name,
+        str(zone): {
+            "result": character_data
+        },
+    }
 
-    r.set(key, json.dumps(finishedObject.get_json()).encode("utf-8"))
-    r.expire(key, 86400) #24 hours
+    r.set(key, json.dumps(payload))
+    r.expire(key, 86400)  # 24 hours
 
-    return finishedObject
+    return jsonify(payload)
